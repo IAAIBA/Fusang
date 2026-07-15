@@ -1,0 +1,154 @@
+---
+import SiteNav from '../components/SiteNav.astro';
+import { ClientRouter } from 'astro:transitions';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  mode?: 'panorama' | 'document';
+}
+
+const {
+  title = 'Fusang — 文学蒙太奇',
+  description = '写散文，也记录那些不适合被归档的瞬间。',
+  mode = 'document',
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const isPreview = process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production';
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#080808" />
+    {isPreview && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/rss+xml" title="Fusang 写作" href="/rss.xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <title>{title}</title>
+    <ClientRouter fallback="animate" />
+    <script is:inline>
+      (() => {
+        const saved = localStorage.getItem('arsvine-theme');
+        const preferred = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = saved === 'light' || saved === 'dark' ? saved : preferred;
+      })();
+    </script>
+  </head>
+  <body class:list={[`mode-${mode}`]}>
+    <SiteNav mode={mode} />
+    <main id="main-content">
+      <slot />
+    </main>
+    <div class="site-cursor" data-site-cursor aria-hidden="true" transition:persist="site-cursor">
+      <span class="site-cursor__dot"></span>
+      <span class="site-cursor__ring-anchor">
+        <svg class="site-cursor__ring" viewBox="0 0 58 58" focusable="false">
+          <circle cx="29" cy="29" r="27.5" vector-effect="non-scaling-stroke"></circle>
+        </svg>
+      </span>
+    </div>
+    <div class="rotate-gate" role="status" aria-live="polite">
+      <div class="rotate-gate__mark" aria-hidden="true"></div>
+      <p>请将设备横置</p>
+      <span>这段文字需要一片更宽的水面</span>
+    </div>
+    <script>
+      const updateThemeControl = () => {
+        const button = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+        if (!button) return;
+        const isLight = document.documentElement.dataset.theme === 'light';
+        button.setAttribute('aria-pressed', String(isLight));
+        button.setAttribute('aria-label', isLight ? '切换至深色主题' : '切换至浅色主题');
+      };
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element) || !target.closest('[data-theme-toggle]')) return;
+        const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('arsvine-theme', next);
+        updateThemeControl();
+      });
+
+      document.addEventListener('dragstart', (event) => {
+        event.preventDefault();
+      });
+
+      document.addEventListener('astro:page-load', updateThemeControl);
+      updateThemeControl();
+
+      const cursor = document.querySelector<HTMLElement>('[data-site-cursor]');
+      const cursorDot = cursor?.querySelector<HTMLElement>('.site-cursor__dot');
+      const cursorRingAnchor = cursor?.querySelector<HTMLElement>('.site-cursor__ring-anchor');
+      const cursorRing = cursor?.querySelector<HTMLElement>('.site-cursor__ring');
+      const supportsCustomCursor = matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (cursor && cursorDot && cursorRingAnchor && cursorRing && supportsCustomCursor) {
+        const interactiveSelector = 'a, button, input, textarea, select, summary, [role="button"], [data-cursor-interactive]';
+        let targetX = innerWidth / 2;
+        let targetY = innerHeight / 2;
+        let ringX = targetX;
+        let ringY = targetY;
+        let interactive = false;
+        let cooldownUntil = 0;
+
+        const setInteractive = (next: boolean) => {
+          if (interactive === next) return;
+          interactive = next;
+          cursor.classList.toggle('is-interactive', next);
+          if (!next) {
+            cursor.classList.remove('is-entering');
+            cooldownUntil = performance.now() + 600;
+            return;
+          }
+
+          if (performance.now() < cooldownUntil) {
+            cursor.classList.remove('is-entering');
+            return;
+          }
+
+          const finalDiameter = 58;
+          const entryScale = Math.hypot(innerWidth, innerHeight) / finalDiameter * 1.12;
+          cursor.style.setProperty('--cursor-entry-scale', String(entryScale));
+          cursor.classList.remove('is-entering');
+          void cursorRing.offsetWidth;
+          cursor.classList.add('is-entering');
+        };
+
+        document.addEventListener('pointermove', (event) => {
+          if (event.pointerType === 'touch') return;
+          targetX = event.clientX;
+          targetY = event.clientY;
+          cursorDot.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
+          cursor.classList.add('is-visible');
+          const target = event.target;
+          const isNavigation = target instanceof Element && Boolean(target.closest('.site-nav'));
+          const isInteractive = target instanceof Element && Boolean(target.closest(interactiveSelector));
+          setInteractive(!isNavigation && isInteractive);
+        }, { passive: true });
+
+        document.documentElement.addEventListener('mouseleave', () => {
+          cursor.classList.remove('is-visible');
+          setInteractive(false);
+        });
+
+        const updateCursorRing = () => {
+          ringX += (targetX - ringX) * 0.16;
+          ringY += (targetY - ringY) * 0.16;
+          cursorRingAnchor.style.transform = `translate3d(${ringX}px, ${ringY}px, 0)`;
+          requestAnimationFrame(updateCursorRing);
+        };
+        requestAnimationFrame(updateCursorRing);
+      }
+    </script>
+  </body>
+</html>

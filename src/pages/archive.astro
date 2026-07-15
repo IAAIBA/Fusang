@@ -1,0 +1,36 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatChineseDate, getPublishedWriting } from '../lib/content';
+
+const entries = getPublishedWriting(await getCollection('writing'));
+const years = Map.groupBy(entries, (entry) => entry.data.publishedAt.getFullYear());
+---
+
+<BaseLayout title="归档 — Fusang" description="按时间查看 Fusang 的写作。">
+  <div class="document-shell">
+    <header class="document-header">
+      <div>
+        <span class="document-kicker">Archive</span>
+        <h1 class="document-title document-title--single-line">时间水位</h1>
+      </div>
+      <p class="document-intro">归档不是奖项或数字的陈列。它只标记文字曾在什么时候抵达岸边。</p>
+    </header>
+
+    {[...years.entries()].map(([year, yearEntries]) => (
+      <section class="archive-year">
+        <h2>{year}</h2>
+        <ul>
+          {yearEntries.map((entry) => (
+            <li>
+              <a href={`/writing/${entry.id}`}>
+                <span>{entry.data.title}</span>
+                <time>{formatChineseDate(entry.data.publishedAt)}</time>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+</BaseLayout>

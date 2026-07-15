@@ -1,0 +1,36 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatChineseDate, getPublishedWriting } from '../../lib/content';
+
+export async function getStaticPaths() {
+  const entries = getPublishedWriting(await getCollection('writing'));
+  return entries.map((entry) => ({ params: { id: entry.id }, props: { entry } }));
+}
+
+interface Props {
+  entry: CollectionEntry<'writing'>;
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const layoutClass = `article-shell--${entry.data.readingLayout}`;
+---
+
+<BaseLayout title={`${entry.data.title} — Fusang`} description={entry.data.description}>
+  <article class:list={['article-shell', layoutClass]}>
+    <header class="article-header">
+      <a class="article-back" href="/writing">返回文章索引</a>
+      <div class="article-meta">
+        <time>{formatChineseDate(entry.data.publishedAt)}</time>
+        <span> · </span>
+        <span>{entry.data.tags.join(' / ')}</span>
+      </div>
+      <h1 class="article-title">{entry.data.title}</h1>
+      <p class="article-description">{entry.data.description}</p>
+    </header>
+    <div class="prose">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>

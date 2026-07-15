@@ -1,0 +1,44 @@
+---
+interface Props {
+  mode: 'panorama' | 'document';
+}
+
+const { mode } = Astro.props;
+const isHome = mode === 'panorama';
+const pathname = Astro.url.pathname;
+const items = [
+  { id: 'home', label: '首页', route: '/' },
+  { id: 'writing', label: '文章', route: '/writing' },
+  { id: 'archive', label: '归档', route: '/archive' },
+  { id: 'about', label: '关于', route: '/about' },
+];
+---
+
+<aside class="site-nav" aria-label="站点导航">
+  <a class="site-nav__brand" href="/" aria-label="Fusang 首页">
+    <span class="site-nav__brand-short">F</span>
+    <span class="site-nav__brand-full">Fusang</span>
+  </a>
+
+  <nav class="site-nav__links">
+    {items.map((item, index) => (
+      <a
+        class="site-nav__link"
+        href={isHome ? `#${item.id}` : item.route}
+        data-panorama-target={isHome ? item.id : undefined}
+        aria-current={!isHome && (pathname === item.route || (item.route !== '/' && pathname.startsWith(`${item.route}/`))) ? 'page' : undefined}
+      >
+        <span class="site-nav__index">{String(index + 1).padStart(2, '0')}</span>
+        <span class="site-nav__label">{item.label}</span>
+      </a>
+    ))}
+  </nav>
+
+  <div class="site-nav__footer">
+    <button class="theme-toggle" type="button" data-theme-toggle aria-label="切换主题">
+      <span class="theme-toggle__disc" aria-hidden="true"></span>
+      <span class="site-nav__label">明暗</span>
+    </button>
+    <span class="site-nav__edition">MMXXVI</span>
+  </div>
+</aside>

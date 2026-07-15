@@ -1,0 +1,35 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatChineseDate, getPublishedWriting } from '../../lib/content';
+
+const entries = getPublishedWriting(await getCollection('writing'));
+---
+
+<BaseLayout title="文章索引 — Fusang" description="Fusang 的散文与短章。">
+  <div class="document-shell">
+    <header class="document-header">
+      <div>
+        <span class="document-kicker">Writing</span>
+        <h1 class="document-title document-title--single-line">文章索引</h1>
+      </div>
+      <p class="document-intro">长文沿页面向下，短章依照内容选择竖排或横排。这里不按价值排序，只保留写作发生的时间。</p>
+    </header>
+
+    <div class="writing-list">
+      {entries.map((entry) => (
+        <a class="writing-card" href={`/writing/${entry.id}`}>
+          <span class="writing-card__meta">
+            <time>{formatChineseDate(entry.data.publishedAt)}</time><br />
+            {entry.data.readingLayout === 'long' ? 'LONG ESSAY' : entry.data.readingLayout === 'vertical-short' ? 'VERTICAL' : 'SHORT'}
+          </span>
+          <div>
+            <h2>{entry.data.title}</h2>
+            <p>{entry.data.description}</p>
+          </div>
+          <span class="writing-card__arrow" aria-hidden="true">→</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

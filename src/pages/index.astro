@@ -1,0 +1,57 @@
+---
+import { getCollection } from 'astro:content';
+import { getImage } from 'astro:assets';
+import HorizontalPanorama from '../components/HorizontalPanorama';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatChineseDate, getPublishedWriting, selectFeaturedWriting } from '../lib/content';
+import mistRiverbank from '../assets/atmosphere/mist-riverbank.png';
+import nightWater from '../assets/atmosphere/night-water.png';
+import rainGlass from '../assets/atmosphere/rain-glass.png';
+import rainLeaves from '../assets/atmosphere/rain-leaves.png';
+import fusangAvatar from '../assets/fusang-avatar.png';
+
+const entries = getPublishedWriting(await getCollection('writing'));
+const featuredEntry = selectFeaturedWriting(entries);
+
+const summarize = (entry: typeof entries[number]) => ({
+  title: entry.data.title,
+  description: entry.data.description,
+  href: `/writing/${entry.id}`,
+  date: formatChineseDate(entry.data.publishedAt),
+  layout: entry.data.readingLayout,
+});
+
+const optimize = async (source: typeof nightWater) => {
+  const [small, large] = await Promise.all([
+    getImage({ src: source, width: 960, format: 'webp', quality: 78 }),
+    getImage({ src: source, width: 1672, format: 'webp', quality: 82 }),
+  ]);
+  return {
+    src: large.src,
+    srcSet: `${small.src} 960w, ${large.src} 1672w`,
+  };
+};
+
+const [nightWaterSource, rainLeavesSource, mistRiverbankSource, rainGlassSource] = await Promise.all([
+  optimize(nightWater),
+  optimize(rainLeaves),
+  optimize(mistRiverbank),
+  optimize(rainGlass),
+]);
+const avatarSource = await getImage({ src: fusangAvatar, width: 560, format: 'webp', quality: 82 });
+---
+
+<BaseLayout mode="panorama">
+  <HorizontalPanorama
+    client:load
+    avatarSrc={avatarSource.src}
+    featured={summarize(featuredEntry)}
+    writing={entries.map(summarize)}
+    images={{
+      nightWater: nightWaterSource,
+      rainLeaves: rainLeavesSource,
+      mistRiverbank: mistRiverbankSource,
+      rainGlass: rainGlassSource,
+    }}
+  />
+</BaseLayout>
