@@ -217,7 +217,6 @@
   width: clamp(260px, 31vw, 520px);
   aspect-ratio: 1;
   pointer-events: none;
-  filter: saturate(0.76) brightness(1.08) contrast(1.08);
   transform: translate3d(var(--parallax-x, 0), var(--parallax-y, 0), 0);
   will-change: opacity, transform;
 }
@@ -239,10 +238,6 @@
 .particle-portrait.reveal-target.is-revealed {
   opacity: 0.92;
   transform: translate3d(var(--parallax-x, 0), var(--parallax-y, 0), 0) scale(1);
-}
-
-:root[data-theme="light"] .particle-portrait {
-  filter: saturate(0.68) brightness(0.82) contrast(1.16);
 }
 
 .rain-field {

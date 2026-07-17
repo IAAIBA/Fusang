@@ -144,6 +144,52 @@ test('theme and collapsed navigation are real interactive states', async ({ page
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
 
+test('light theme particle portrait keeps visible canvas contrast', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('arsvine-theme', 'light'));
+  await page.goto('/');
+
+  const portrait = page.locator('[data-cycle="middle"] .particle-portrait');
+  const canvas = portrait.locator('canvas');
+  await expect(canvas).toHaveAttribute('data-particle-ready', 'true');
+  await expect(portrait).toHaveAttribute('data-particle-theme', 'light');
+
+  const contrast = await canvas.evaluate((node) => {
+    const canvas = node as HTMLCanvasElement;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas context is unavailable');
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const background = [244, 245, 239] as const;
+    const luminance = (red: number, green: number, blue: number) => {
+      const linearize = (channel: number) => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      };
+      return linearize(red) * 0.2126 + linearize(green) * 0.7152 + linearize(blue) * 0.0722;
+    };
+    const backgroundLuminance = luminance(...background);
+    const ratios: number[] = [];
+
+    for (let index = 0; index < pixels.length; index += 4) {
+      const alpha = pixels[index + 3] / 255;
+      if (alpha < 0.93) continue;
+      const red = pixels[index] * alpha + background[0] * (1 - alpha);
+      const green = pixels[index + 1] * alpha + background[1] * (1 - alpha);
+      const blue = pixels[index + 2] * alpha + background[2] * (1 - alpha);
+      const foregroundLuminance = luminance(red, green, blue);
+      ratios.push((Math.max(foregroundLuminance, backgroundLuminance) + 0.05) / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05));
+    }
+
+    ratios.sort((left, right) => left - right);
+    return {
+      sampleCount: ratios.length,
+      tenthPercentile: ratios[Math.floor(ratios.length * 0.1)] ?? 0,
+    };
+  });
+
+  expect(contrast.sampleCount).toBeGreaterThan(500);
+  expect(contrast.tenthPercentile).toBeGreaterThanOrEqual(2.45);
+});
+
 test('site links use soft navigation and cannot be dragged', async ({ page }) => {
   await page.goto('/writing');
   await expect(page.locator('.document-title')).toHaveCSS('white-space', 'nowrap');
